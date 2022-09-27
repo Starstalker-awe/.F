@@ -5,33 +5,39 @@
 		<meta charset="UTF-8">
 		<title>Grocery List</title>
 		<style>
+			:root{
+				--width: 75%;
+				--content-width: 65%;
+				--rainbow: linear-gradient(90deg, red, orange, yellow, lime, green, lightblue, blue, purple)
+			}
 			body{font-family: 'Work Sans', sans-serif;}
 			.toggles{
 				display: flex;
 				justify-content: center;
 				flex-direction: column;
 			}
-			hr{width: 60%; margin: auto;}
+			.divider{
+				width: var(--width);
+				height: 2px;
+				background-image: var(--rainbow);
+				margin: 0 auto;
+			}
 			.toggle-title{
 				color: #444;
 				cursor: pointer;
-				padding: 30px 20px;
-				width: 60%;
-				border: none;
+				padding: 20px 20px 10px 20px;
+				width: var(--width);
 				outline: none;
-				transition: 0.4s;
 				margin: auto;
-
 			}
-			.active, .toggle-title:hover{background-color: #F9F9F9;}
 			.toggle-body{
-				margin: auto;
-				width: 50%; 
-				padding: auto;
-				padding: 0 18px;
+				margin: auto auto 10px auto;
+				width: var(--content-width);
 				background-color: white;
 				display: none;
+				outline: 1px solid grey;
 				overflow: hidden;
+				padding: 20px;
 			}
 			.toggle-title:after{
 				content: '\02795';
@@ -41,13 +47,38 @@
 				margin-left: 5px;
 			}
 			.active:after{content: "\2796";}
+
+			.banner-button{
+				width: 100%;
+				height: 60px;
+				border-radius: 3px;
+				text-align: center;
+				margin: 0 auto;
+			}
+			.banner-button:hover{filter: brightness(80%);}
+			.create-meal{
+				border: 2px solid rgb(255, 140, 0);
+				background-color: rgba(255, 140, 0, 0.228);
+			}
 		</style>
 	</head>
 	<body>
 		<main>
 			<section class="toggles">
-				<div>
-					<h2 class="toggle-title">Edit Your Meals</h2>
+				<div id="meals-container">
+					<h2 class="toggle-title">Meals</h2>
+					<div class="toggle-body">
+						<div id="meals">
+
+						</div>
+						<button class="banner-button create-meal">
+							<h4>New Meal</h4>
+						</button>
+					</div>
+				</div>
+				<div class="divider"></div>
+				<div id="meal-plan-container">
+					<h2 class="toggle-title">Menu Plan</h2>
 					<div class="toggle-body">
 						<p>Lorem ipsum dolor, sit amet consectetur adipisicing elit. Velit saepe sequi, illum facere
 							necessitatibus cum aliquam id illo omnis maxime, totam soluta voluptate amet ut sit ipsum
@@ -55,18 +86,8 @@
 							Perspiciatis, porro!</p>
 					</div>
 				</div>
-				<hr>
-				<div>
-					<h2 class="toggle-title">Your Menu Plan</h2>
-					<div class="toggle-body">
-						<p>Lorem ipsum dolor, sit amet consectetur adipisicing elit. Velit saepe sequi, illum facere
-							necessitatibus cum aliquam id illo omnis maxime, totam soluta voluptate amet ut sit ipsum
-							aperiam.
-							Perspiciatis, porro!</p>
-					</div>
-				</div>
-				<hr>
-				<div>
+				<div class="divider"></div>
+				<div id="grocery-list-container">
 					<h2 class="toggle-title">Grocery List</h2>
 					<div class="toggle-body">
 						<p>Lorem ipsum dolor, sit amet consectetur adipisicing elit. Velit saepe sequi, illum facere
@@ -78,6 +99,70 @@
 			</section>
 		</main>
 		<script type="module">
+			import {source as s, render, template} from 'https://unpkg.com/@lcf.vs/dom-engine@5.5.4/lib/frontend.js';
+
+			class Item{
+				constructor(name, qty, cat){
+					this.name = name; 
+					this.qty = qty;
+					this.category = typeof cat === 'number' ? Item.categories[cat] : cat;
+				}
+				serialize(){return {...this, category: typeof this.category == 'number' ? this.category : Item.categories.indexOf(this.category)}}
+				render(){
+					return render({
+						[s]: `<div class="ingredient">
+							<span class="ingredient-name" contenteditable>{name}</span>
+							<input type="number" class="ingredient-qty" value="{qty}">
+							<select class="ingredient-categories">
+								{options}
+								<!--<option class="ingredient-category" ${Item.categories.indexOf(this.category) == 0 ? 'selected ' : ''}value="Dry"></option>
+								<option class="ingredient-category" ${Item.categories.indexOf(this.category) == 1 ? 'selected ' : ''}value="Produce"></option>
+								<option class="ingredient-category" ${Item.categories.indexOf(this.category) == 2 ? 'selected ' : ''}value="Deli"></option>
+								<option class="ingredient-category" ${Item.categories.indexOf(this.category) == 3 ? 'selected ' : ''}value="Frozen"></option>
+								<option class="ingredient-category" ${Item.categories.indexOf(this.category) == 4 ? 'selected ' : ''}value="Other"></option>-->
+							</select>
+							<button class="delete">&times;</button>
+						</div>`,
+						name: this.name,
+						qty: this.qty,
+						options: Item.categories.map((c,i)=>`<option class="ingredient-category" ${Item.categories[i] == c ? 'selected ' : ''}value=${c}</option>`)
+					})
+				}
+				static categories = ["Dry", "Produce", "Deli", "Frozen", "Other"];
+			}
+			class Meal{
+				constructor({name, ingredients}){
+					this.name = name; 
+					this.ingredients = ingredients;
+					console.log(this.ingredients)
+				}
+				serialize(){return {name: this.name, ingredients: this.ingredients.map(i=>i.serialize())}}
+				render(){
+					return render({
+						[s]: `
+							<div class="meal-container">
+								<h3 class="toggle-title" contenteditable>{name}</h3>
+								<div class="toggle-body">
+									{ingredients}
+									<button class="banner-button"><h4>Add Ingredient</h4></button>
+								</div>
+							</div>
+						`,
+						name: this.name,
+						ingredients: this.ingredients.map(i=>i.render()),
+					})
+				}
+			}
+
+
+			// ========= TEST DATA =============
+			let things = {meals: [
+				new Meal({name: "Pesto Pasta", ingredients: [new Item("Pasta", 1, 0), new Item("Spinach", 0.5, 1), new Item("Pesto", 0.5, 0), new Item("Pepper", 1, 1), new Item("Olives", 0.5, 0)]}),
+				new Meal({name: "Lentil Pasta", ingredients: [new Item("Pasta", 1, 0), new Item("Carrot", 1, 1), new Item("Lentil", 1, 0)]})
+			], plan: [], list: new Set()};
+			window.localStorage.setItem("meal_plan_data", JSON.stringify({plan: things.plan, list: [...things.list], meals: things.meals.map(m=>m.serialize())}));
+			// ========= TEST DATA =============
+
 			for(const sect of document.querySelectorAll(".toggle-title")){
 				sect.addEventListener("click", _=>{
 					sect.classList.toggle("active");
@@ -85,18 +170,28 @@
 				})
 			}
 
-			import {source as s, render} from 'https://unpkg.com/@lcf.vs/dom-engine@5.5.4/lib/frontend.js';
-			String.prototype.capitalizeWords = function(){return this.trim().split(" ").map(word=>`${word[0].toUpperCase()}${word.substring(1)}`).join(" ")}
+			let data = JSON.parse(window.localStorage.getItem("meal_plan_data") ?? {meals: [], plan: [], list: new Set()});
+			String.prototype.capitalizeWords = function(){return this.trim().split(" ").map(word=>`${word[0].toUpperCase()}${word.substring(1)}`).join(" ")};
 
-			let LIST = [];
+			/*await new Promise((res)=>res(document.querySelector("#meals-container>.toggle-body").append(render({[s]:``}))))
+			.then(_=>{*/
+				(function renderKnown(_){
+					data = Object.assign(data, {
+						meals: data.meals.map(meal=>new Meal(meal)),
+						list: new Set(data.list)
+					})
+				})(null)
 
-			// Define basic classes
-			class Item{constructor(name, qty){this.name = name; this.qty = qty}}
-			class Meal{constructor(name, [...items]){this.name = name; this.ingredients = items}}
+				document.querySelector("#meals").append(data.meals[0].render())
+			/*})
+			.then(ret=>{
+				(function setupListeners(_){
+					document.querySelector(".add-meal").addEventListener("click", _=>{
+						_ = document.querySelector("#meal-name").value;
 
-			document.querySelector("main").append(render({
-				[s]: `<input type="text" id=""`
-			}))
+					})
+				})(null)
+			});*/
 		</script>
 	</body>
 </html>
