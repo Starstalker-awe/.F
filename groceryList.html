@@ -60,6 +60,10 @@
 				border: 2px solid rgb(255, 140, 0);
 				background-color: rgba(255, 140, 0, 0.228);
 			}
+			.meal:after{content: none !important;}
+
+
+			.inline{display: inline;}
 		</style>
 	</head>
 	<body>
@@ -134,14 +138,14 @@
 				constructor({name, ingredients}){
 					this.name = name; 
 					this.ingredients = ingredients;
-					console.log(this.ingredients)
 				}
 				serialize(){return {name: this.name, ingredients: this.ingredients.map(i=>i.serialize())}}
 				render(){
 					return render({
 						[s]: `
 							<div class="meal-container">
-								<h3 class="toggle-title" contenteditable>{name}</h3>
+								<h3 class="toggle-title meal inline" contenteditable="false">{name}</h3>
+								<span class="edit-meal-name inline">&#9998;</span>
 								<div class="toggle-body">
 									{ingredients}
 									<button class="banner-button"><h4>Add Ingredient</h4></button>
@@ -156,7 +160,7 @@
 
 
 			// ========= TEST DATA =============
-			let things = {meals: [
+			const things = {meals: [
 				new Meal({name: "Pesto Pasta", ingredients: [new Item("Pasta", 1, 0), new Item("Spinach", 0.5, 1), new Item("Pesto", 0.5, 0), new Item("Pepper", 1, 1), new Item("Olives", 0.5, 0)]}),
 				new Meal({name: "Lentil Pasta", ingredients: [new Item("Pasta", 1, 0), new Item("Carrot", 1, 1), new Item("Lentil", 1, 0)]})
 			], plan: [], list: new Set()};
@@ -177,7 +181,7 @@
 			.then(_=>{*/
 				(function renderKnown(_){
 					data = Object.assign(data, {
-						meals: data.meals.map(meal=>new Meal(meal)),
+						meals: data.meals.map(meal=>new Meal({...meal, ingredients: meal.ingredients.map(i=>new Item(...Object.values(i)))})),
 						list: new Set(data.list)
 					})
 				})(null)
