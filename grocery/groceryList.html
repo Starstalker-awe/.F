@@ -138,23 +138,48 @@
 		</main>
 		<script type="module">
 			import {source as s, render, template} from 'https://unpkg.com/@lcf.vs/dom-engine@5.5.4/lib/frontend.js';
-			String.prototype.format = function(){return this.trim().split(" ").map(word=>`${word[0].toUpperCase()}${word.substring(1)}`).join(" ")};
+			String.prototype.format = function(_=0){return (_ = this.trim()).length > 1 ? _.split(" ").map(w=>(w = w.trim(), `${w[0].toUpperCase()}${w.substring(1).toLowerCase()}`)).join(" ") : _.length == 1 ? _.toUpperCase() : _};
 			NodeList.prototype.addEventListener = function(event, func){return [...this].map(node=>node.addEventListener(event, func))};
-			Node.prototype.p = function(){return this.parentNode};
+			Node.prototype.p = function(c=1,_){return (_ = this, Array.from(Array(c),_=>0).forEach(n=>_ = _.parentNode), _)};
 			
-			class Item{
-				constructor(name, qty, cat){
+			class Meal{
+				constructor({name, ingredients}){
 					this.name = name; 
-					this.qty = qty;
-					this.category = typeof cat === 'number' ? Item.categories[cat] : cat;
+					this.ingredients = ingredients;
 				}
-				serialize(){return {...this, category: typeof this.category == 'number' ? this.category : Item.categories.indexOf(this.category)}}
+				serialize(){return {name: this.name, ingredients: this.ingredients.serialize()}}
 				render(){
 					return render({
-						[s]: `<div class="ingredient">
+						[s]: `<div class="meal-container" data-meal-name="{name}">
+							<h3 class="toggle-title meal inline" contenteditable="false">{name}</h3>
+							<span class="edit-meal-name inline">&#9998;</span>
+							<div class="ingredients">
+								{ingredients}
+							</div>
+							<button class="banner-button add-ingredient">Add Ingredient</button>
+						</div>`,
+						name: this.name,
+						ingredients: this.ingredients.items.map(i=>i.render()),
+					})
+				}
+			}
+			class Ingredient{
+				#cat; constructor(name, qty, cat){
+					this.name = name; 
+					this.qty = qty;
+					this.#cat = cat;
+					return (_=>new Proxy(this, {
+						get(targ, prop){return prop === 'category' ? (typeof _.#cat === 'number' ? Ingredient.categories[_.#cat] : _.#cat) : targ[prop]},
+						set(targ, prop, val){targ[prop] = prop === 'category' ? (typeof val === 'number' ? Ingredient.categories[val] : val) : val; return !0}
+					}))(this)
+				}
+				serialize(){return {...this, category: typeof this.category == 'number' ? this.category : Ingredient.categories.indexOf(this.category)}}
+				render(){
+					return render({
+						[s]: `<div class="ingredient" data-ingredient-name="${this.name}">
 							<p contenteditable>${this.name}</p>
 							<div class="ingredient-right">
-								<input type="number" value="${this.qty}"></input>
+								<input type="number" value="${this.qty}" class="ingredient-qty"></input>
 								<select class="ingredient-categories">
 									<option class="ingredient-category" disabled>-- ${this.name} --</option>
 									{categories}
@@ -162,78 +187,68 @@
 								<button class="ingredient-delete">🗑</button>
 							</div>
 						</div>`,
-						categories: Item.categories.map((c,i)=>render({
-							[s]: `<option class="ingredient-category" ${Item.categories.indexOf(this.category) == i ? 'selected ' : ''}value="${c}">${c}</option>`
+						categories: Ingredient.categories.map((c,i)=>render({
+							[s]: `<option class="ingredient-category" ${Ingredient.categories.indexOf(this.category) == i ? 'selected ' : ''}value="${c}">${c}</option>`
 						}))
 					})
 				}
 				static categories = ["Dry", "Produce", "Deli", "Frozen", "Other"];
 			}
-			class Meal{
-				constructor({name, ingredients}, index = null){
-					this.name = name; 
-					this.ingredients = ingredients;
-					this.i = index;
-				}
-				serialize(){return {name: this.name, ingredients: this.ingredients.serialize()}}
-				render(){
-					console.log(this.ingredients)
-					return render({
-						[s]: `<div class="meal-container" data-meal-name="{name}" data-meal-index="{?index}">
-							<h3 class="toggle-title meal inline" contenteditable="false">{name}</h3>
-							<span class="edit-meal-name inline">&#9998;</span>
-							<div class="ingredients">
-								{ingredients}
-								</div>
-							<button class="banner-button"><p>Add Ingredient</p></button>
-						</div>`,
-						name: this.name, index: this.i,
-						ingredients: this.ingredients.ingredients.map(i=>i.render()),
-					})
-				}
+			class List{
+				#ltype; constructor(...items){this.items = items.flat(); this.#ltype = this.constructor.name}
+				find(name){return new Proxy(this.items.find(i=>i.name.format() === (name ?? '').format()), {})}
+				remove(name, _=0){return ((_ = this.items.reduce((p,c,i)=>c.name.format() === name.format() ? i : p, null)) !== null ? this.items.splice(_, 1) : null, this.items)}
+				add(item, hrs, _=0){(_ = this.items.reduce((p,c,i)=>c.name.format() === item.name.format() ? i : p, 0)) ? hrs[0](this, _, item) : hrs[1](this, item)}
+				serialize(){return this.items.map(i=>i.serialize())}
+				last(){return this.items[this.items.length - 1]}
 			}
-			class IngredientList{
-				constructor(...ingredients){this.ingredients = ingredients}
-				getQty(name){return this.ingredients.find(i=>i.name.format() === name.format()).qty}
-				add(ingredient, _=0){(_ = this.ingredients.reduce((p,c,i)=>c.name.format() === ingredient.name.format() ? i : p, 0)) ? this.ingredients[_].qty += ingredient.qty : this.ingredients.push(ingredient)}
-				remove(name, _=0){return (_ = this.ingredients.reduce((p,c,i)=>c.name.format() === name.format() ? i : p, 0) ? this.ingredients.splice(_, 1) : null, this.ingredients)}
-				serialize(){return this.ingredients.map(i=>i.serialize())}
+			class MealList extends List{
+				constructor(...items){super(...items.flat())}
+				add(item){return super.add(item, [(t,i,i2)=>alert("You've already defined a meal with that name!"), (t,i2)=>t.items.push(i2)])}
+			}
+			class IngredientList extends List{
+				constructor(...items){super(...items.flat())}
+				add(item){return super.add(item, [(t,i,i2)=>t.items[i].qty += i2.qty, (t,i2)=>t.items.push(i2)])}
 			}
 
 
 			// ========= TEST DATA =============
-			const things = {meals: [
-				new Meal({name: "Pesto Pasta", ingredients: new IngredientList(new Item("Pasta", 1, 0), new Item("Spinach", 0.5, 1), new Item("Pesto", 0.5, 0), new Item("Pepper", 1, 1), new Item("Olives", 0.5, 0))}),
-				new Meal({name: "Lentil Pasta", ingredients: new IngredientList(new Item("Pasta", 1, 0), new Item("Carrot", 1, 1), new Item("Lentil", 1, 0))}),
-				new Meal({name: "A really really really really really long meal name", ingredients: new IngredientList(new Item("A really really really really long ingredient name", 1))})
-			], plan: [], list: new Set()};
-			window.localStorage.setItem("meal_plan_data", JSON.stringify({plan: things.plan, list: [...things.list], meals: things.meals.map(m=>m.serialize())}));
+			const things = {meals: new MealList(
+				new Meal({name: "Pesto Pasta", ingredients: new IngredientList(new Ingredient("Pasta", 1, 0), new Ingredient("Spinach", 0.5, 1), new Ingredient("Pesto", 0.5, 0), new Ingredient("Pepper", 1, 1), new Ingredient("Olives", 0.5, 0))}),
+				new Meal({name: "Lentil Pasta", ingredients: new IngredientList(new Ingredient("Pasta", 1, 0), new Ingredient("Carrot", 1, 1), new Ingredient("Lentil", 1, 0))}),
+				new Meal({name: "A really really really really really long meal name", ingredients: new IngredientList(new Ingredient("A really really really really long ingredient name", 1))})
+			), plan: [], list: new Set()};
+			window.localStorage.setItem("meal_plan_data", JSON.stringify({plan: things.plan, list: [...things.list], meals: things.meals.serialize()}));
 			// ========= TEST DATA =============
 
-			for(const sect of document.querySelectorAll(".toggle-title")){
-				sect.addEventListener("click", _=>{
-					sect.classList.toggle("active");
-					(_ = sect.nextElementSibling).style.display = _.style.display === 'block' ? 'none' : 'block';
-				})
-			}
+			for(const t of document.querySelectorAll(".toggle-title")){t.addEventListener("click",_=>(_=(t.classList.toggle("active"),t).nextElementSibling).style.display=_.style.display==='block'?'none':'block')}
 
 			let data = JSON.parse(window.localStorage.getItem("meal_plan_data") ?? {meals: [], plan: [], list: new Set()});
 
-			await new Promise(r=>(null,r((function renderKnown(_){
-				return data = Object.assign(data, {
-					meals: data.meals.map((meal, i)=>new Meal({...meal, ingredients: new IngredientList(...meal.ingredients.map(i=>new Item(...Object.values(i))))}, i)),
-					list: new Set(data.list)
-				})
-			})(null))))
-			.then(_=>_.meals.forEach(m=>document.querySelector("#meals").append(m.render())))
-			.then(_=>{
-				(function setupListeners(_){
-					document.querySelectorAll(".ingredient-delete").addEventListener("click", _=>
-						confirm(`Are you sure you want to remove ${(_ = _.target.p().p()).firstElementChild.textContent} from ${_.p().p().dataset.mealName} ingredient list?`) ? (_=>
-							(_.remove(), null)
-						)(_) : null);
-				})(_)
-			})
+			await new Promise(r=>r((_=>data = Object.assign(data, {
+					meals: new MealList(...data.meals.map(meal=>new Meal({...meal, ingredients: new IngredientList(...meal.ingredients.map(i=>new Ingredient(...Object.values(i))))}))), 
+					list: new Set(data.list)}))(null))).then(_=>_.meals.items.forEach(m=>document.querySelector("#meals").append(m.render())))
+			.then(_=>(_=>{
+				document.querySelectorAll(".ingredient>p[contenteditable]").addEventListener("input", window.ingredientName = (_,n=0)=>
+					(_ = _.target, data.meals.find(_.p(3).dataset.mealName).ingredients.find(_.p().dataset.ingredientName).name = (n = _.textContent), _.p().dataset.ingredientName = n));
+				document.querySelectorAll(".ingredient-qty").addEventListener("input", window.ingredientQty = _=>
+					(_ = _.target, data.meals.find(_.p(4).dataset.mealName).ingredients.find(_.p(2).dataset.ingredientName).qty = Number(_.value)));
+				document.querySelectorAll(".ingredient-categories").addEventListener("change", window.ingredientCategories = _=>
+					(_ = _.target, data.meals.find(_.p(4).dataset.mealName).ingredients.find(_.p(2).dataset.ingredientName).category = _.value));
+				document.querySelectorAll(".ingredient-delete").addEventListener("click", window.ingredientDelete = _=>
+					confirm(`Are you sure you want to remove ${(_ = _.target.p(2)).dataset.ingredientName} from ${_.p(2).dataset.mealName} ingredient list?`) ? (_=>
+						(data.meals.find(_.p(2).dataset.mealName).ingredients.remove(_.dataset.ingredientName), _.remove()))(_) : null)})(_))
+			.then(_=>document.querySelectorAll(".add-ingredient").addEventListener("click", (_,__=0)=>{
+				if((__ = data.meals.find(_.target.p(1).dataset.mealName).ingredients).last().name != "Something"){
+					__.add(new Ingredient("Something", 0, 4)); _.target.p(1).querySelector(".ingredients").append(__.find("Something").render())}
+				__ = document.querySelector(`.meal-container[data-meal-name="${_.target.p(1).dataset.mealName}"] .ingredient:last-child`);
+				__.querySelector("p[contenteditable]").addEventListener("input", window.ingredientName);
+				__.querySelector(".ingredient-qty").addEventListener("input", window.ingredientQty);
+				__.querySelector(".ingredient-categories").addEventListener("change", window.ingredientCategories);
+				__.querySelector(".ingredient-delete").addEventListener("click", window.ingredientDelete);
+			}));
+
+			window.log = function(){return data.meals}
 		</script>
 	</body>
 </html>
