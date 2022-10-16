@@ -198,7 +198,7 @@
 				#ltype; constructor(...items){this.items = items.flat(); this.#ltype = this.constructor.name}
 				find(name){return new Proxy(this.items.find(i=>i.name.format() === (name ?? '').format()), {})}
 				remove(name, _=0){return ((_ = this.items.reduce((p,c,i)=>c.name.format() === name.format() ? i : p, null)) !== null ? this.items.splice(_, 1) : null, this.items)}
-				add(item, hrs, _=0){(_ = this.items.reduce((p,c,i)=>c.name.format() === item.name.format() ? i : p, 0)) ? hrs[0](this, _, item) : hrs[1](this, item)}
+				add(item, hrs, _=0){return (_ = this.items.reduce((p,c,i)=>c.name.format() === item.name.format() ? i : p, 0)) ? hrs[0](this, _, item) : hrs[1](this, item)}
 				serialize(){return this.items.map(i=>i.serialize())}
 				last(){return this.items[this.items.length - 1]}
 			}
@@ -221,32 +221,76 @@
 			window.localStorage.setItem("meal_plan_data", JSON.stringify({plan: things.plan, list: [...things.list], meals: things.meals.serialize()}));
 			// ========= TEST DATA =============
 
-			for(const t of document.querySelectorAll(".toggle-title")){t.addEventListener("click",_=>(_=(t.classList.toggle("active"),t).nextElementSibling).style.display=_.style.display==='block'?'none':'block')}
+			for (const title of document.querySelectorAll(".toggle-title")){
+				title.addEventListener("click", e=>{
+					title.classList.toggle("active");
+					const n = title.nextElementSibling;
+					if (n.style.display === 'block'){
+						n.style.display = 'none';
+					}else{
+						n.style.display = 'block';
+					}
+				})
+			}
 
 			let data = JSON.parse(window.localStorage.getItem("meal_plan_data") ?? {meals: [], plan: [], list: new Set()});
 
-			await new Promise(r=>r((_=>data = Object.assign(data, {
-					meals: new MealList(...data.meals.map(meal=>new Meal({...meal, ingredients: new IngredientList(...meal.ingredients.map(i=>new Ingredient(...Object.values(i))))}))), 
-					list: new Set(data.list)}))(null))).then(_=>_.meals.items.forEach(m=>document.querySelector("#meals").append(m.render())))
-			.then(_=>(_=>{
-				document.querySelectorAll(".ingredient>p[contenteditable]").addEventListener("input", window.ingredientName = (_,n=0)=>
-					(_ = _.target, data.meals.find(_.p(3).dataset.mealName).ingredients.find(_.p().dataset.ingredientName).name = (n = _.textContent), _.p().dataset.ingredientName = n));
-				document.querySelectorAll(".ingredient-qty").addEventListener("input", window.ingredientQty = _=>
-					(_ = _.target, data.meals.find(_.p(4).dataset.mealName).ingredients.find(_.p(2).dataset.ingredientName).qty = Number(_.value)));
-				document.querySelectorAll(".ingredient-categories").addEventListener("change", window.ingredientCategories = _=>
-					(_ = _.target, data.meals.find(_.p(4).dataset.mealName).ingredients.find(_.p(2).dataset.ingredientName).category = _.value));
-				document.querySelectorAll(".ingredient-delete").addEventListener("click", window.ingredientDelete = _=>
-					confirm(`Are you sure you want to remove ${(_ = _.target.p(2)).dataset.ingredientName} from ${_.p(2).dataset.mealName} ingredient list?`) ? (_=>
-						(data.meals.find(_.p(2).dataset.mealName).ingredients.remove(_.dataset.ingredientName), _.remove()))(_) : null)})(_))
-			.then(_=>document.querySelectorAll(".add-ingredient").addEventListener("click", (_,__=0)=>{
-				if((__ = data.meals.find(_.target.p(1).dataset.mealName).ingredients).last().name != "Something"){
-					__.add(new Ingredient("Something", 0, 4)); _.target.p(1).querySelector(".ingredients").append(__.find("Something").render())}
-				__ = document.querySelector(`.meal-container[data-meal-name="${_.target.p(1).dataset.mealName}"] .ingredient:last-child`);
-				__.querySelector("p[contenteditable]").addEventListener("input", window.ingredientName);
-				__.querySelector(".ingredient-qty").addEventListener("input", window.ingredientQty);
-				__.querySelector(".ingredient-categories").addEventListener("change", window.ingredientCategories);
-				__.querySelector(".ingredient-delete").addEventListener("click", window.ingredientDelete);
-			}));
+			await new Promise(res=>{
+				const obj = {
+					meals: new MealList(...data.meals.map(meal=>
+						new Meal({...meal, ingredients: new IngredientList(...meal.ingredients.map(ingredient=>
+							new Ingredient(...Object.values(ingredient))))}))),
+					list: new Set(data.list)
+				};
+				res(Object.assign(data, obj));
+			})
+			.then(_=>data.meals.items.forEach(meal=>document.querySelector("#meals").append(meal.render())))
+			.then(_=>{ // Define listener functions as global
+				window.ingredientName = function(e){
+					const [el, nname] = [e.target, e.target.textContent];
+					data.meals.find(el.p(3).dataset.mealName).ingredients.find(el.p().dataset.ingredientName).name = nname;
+					el.p().dataset.ingredientName = nname
+				}
+				window.ingredientQty = function(e){const el = e.target; data.meals.find(el.p(4).dataset.mealName).ingredients.find(el.p(2).dataset.ingredientName).qty = Number(el.value)}
+				window.ingredientCategory = function(e){const el = e.target; data.meals.find(el.p(4).dataset.mealName).ingredients.find(el.p(2).dataset.ingredientName).category = el.value}
+				window.ingredientDelete = function(e){
+					const el = e.target.p(2);
+					if (confirm(`Are you sure you want to delete ${el.dataset.ingredientName} from ${el.p(2).dataset.mealName} ingredient list?`)){
+						data.meals.find(el.p(2).dataset.mealName).ingredients.remove(el.dataset.ingredientName);
+						el.remove()
+					}
+				}
+
+				window.addIngredient = function(e){
+					const ingredients = data.meals.find(e.target.p().dataset.mealName).ingredients;
+					if (ingredients.last().name.format() !== 'Something'){
+						ingredients.add(new Ingredient("Something", 0, 4));
+						e.target.p().querySelector(".ingredients").append(ingredients.find("Something").render())
+						const el = document.querySelector(`.meal-container[data-meal-name="${e.target.p().dataset.mealName}"] .ingredient:last-child`);
+
+						el.querySelector(".ingredient>p[contenteditable]").addEventListener("input", window.ingredientName);
+						el.querySelector(".ingredient-qty").addEventListener("input", window.ingredientQty);
+						el.querySelector(".ingredient-categories").addEventListener("change", window.ingredientCategory);
+						el.querySelector(".ingredient-delete").addEventListener("click", window.ingredientDelete);
+					}else{alert("Please change the name of 'Something' to add another ingredient!")}
+				}
+			})
+			.then(_=>{
+				document.querySelectorAll(".ingredient>p[contenteditable]").addEventListener("input", window.ingredientName);
+				document.querySelectorAll(".ingredient-qty").addEventListener("input", window.ingredientQty);
+				document.querySelectorAll(".ingredient-categories").addEventListener("change", window.ingredientCategory);
+				document.querySelectorAll(".ingredient-delete").addEventListener("click", window.ingredientDelete);
+
+				document.querySelectorAll(".add-ingredient").addEventListener("click", window.addIngredient);
+			})
+			.then(_=>{
+				document.querySelector("button.create-meal").addEventListener("click", function(e){
+					if(data.meals.last().name.format() !== 'Something'){
+						data.meals.add(new Meal({name: 'Something', ingredients: new IngredientList(new Ingredient("Something", 0, 4))}))
+						// Render new meal and add listeners to buttons
+					}
+				})
+			})
 
 			window.log = function(){return data.meals}
 		</script>
