@@ -109,9 +109,7 @@
 						<div id="meals">
 
 						</div>
-						<button class="banner-button create-meal">
-							<h4>New Meal</h4>
-						</button>
+						<button class="banner-button create-meal">New Meal</button>
 					</div>
 				</div>
 				<div class="divider"></div>
@@ -287,8 +285,16 @@
 				document.querySelector("button.create-meal").addEventListener("click", function(e){
 					if(data.meals.last().name.format() !== 'Something'){
 						data.meals.add(new Meal({name: 'Something', ingredients: new IngredientList(new Ingredient("Something", 0, 4))}))
-						// Render new meal and add listeners to buttons
-					}
+						e.target.p().querySelector("#meals").append(data.meals.last().render());
+						const el = document.querySelector("#meals .meal-container:last-child");
+
+						el.querySelector(".ingredient>p[contenteditable]").addEventListener("input", window.ingredientName);
+						el.querySelector(".ingredient-qty").addEventListener("input", window.ingredientQty);
+						el.querySelector(".ingredient-categories").addEventListener("change", window.ingredientCategory);
+						el.querySelector(".ingredient-delete").addEventListener("click", window.ingredientDelete);
+
+						el.querySelector(".add-ingredient").addEventListener("click", window.addIngredient);
+					}else{alert("Please change the name of 'Something' to add another meal!")}
 				})
 			})
 
