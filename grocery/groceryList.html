@@ -31,7 +31,7 @@
 				outline: none;
 				margin: auto;
 			}
-			input.meal{width: 70% !important;}
+			input.meal{width: 60% !important;}
 			.toggle-title:after{
 				content: '\02795';
 				font-size: 13px;
@@ -153,6 +153,7 @@
 						[s]: `<div class="meal-container" data-meal-name="{name}">
 							<h3 class="meal inline">{name}</h3>
 							<span class="edit-meal-name inline" data-editing="false">✎</span>
+							<span class="meal-delete inline">🗑</span>
 							<div class="ingredients">
 								{ingredients}
 							</div>
@@ -274,7 +275,7 @@
 						el.querySelector(".ingredient-delete").addEventListener("click", window.ingredientDelete);
 					}else{alert("Please change the name of 'Something' to add another ingredient!")}
 				}
-				window.changeMealName = async function(e){
+				window.changeMealName = function(e){
 					const toggle = e.target.dataset.editing = !(e.target.dataset.editing == 'true');
 					e.target.innerHTML = toggle ? '💾' : '✎';
 					const name = e.target.previousElementSibling;
@@ -294,6 +295,12 @@
 						}
 					}
 				}
+				window.deleteMeal = function(e){
+					const el = e.target.p();
+					if (confirm(`Are you sure you want to delete "${el.dataset.mealName}" from your meal list?`)){
+						data.meals.remove(el.dataset.mealName); el.remove()
+					}
+				}
 			})
 			.then(_=>{
 				document.querySelectorAll(".ingredient>p[contenteditable]").addEventListener("input", window.ingredientName);
@@ -301,6 +308,7 @@
 				document.querySelectorAll(".ingredient-categories").addEventListener("change", window.ingredientCategory);
 				document.querySelectorAll(".ingredient-delete").addEventListener("click", window.ingredientDelete);
 				document.querySelectorAll(".edit-meal-name").addEventListener("click", window.changeMealName);
+				document.querySelectorAll(".meal-delete").addEventListener("click", window.deleteMeal);
 				
 				document.querySelectorAll(".add-ingredient").addEventListener("click", window.addIngredient);
 			})
@@ -316,6 +324,7 @@
 						el.querySelector(".ingredient-categories").addEventListener("change", window.ingredientCategory);
 						el.querySelector(".ingredient-delete").addEventListener("click", window.ingredientDelete);
 						el.querySelector(".edit-meal-name").addEventListener("click", window.changeMealName);
+						el.querySelector(".meal-delete").addEventListener("click", window.deleteMeal);
 
 						el.querySelector(".add-ingredient").addEventListener("click", window.addIngredient);
 					}else{alert("Please change the name of 'Something' to add another meal!")}
