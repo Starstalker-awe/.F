@@ -31,7 +31,8 @@
 				outline: none;
 				margin: auto;
 			}
-			.toggle-title:not(.meal):after{
+			input.meal{width: 70% !important;}
+			.toggle-title:after{
 				content: '\02795';
 				font-size: 13px;
 				color: #777;
@@ -98,6 +99,7 @@
 
 
 			.inline{display: inline;}
+			.flex{display: flex;}
 		</style>
 	</head>
 	<body>
@@ -149,8 +151,8 @@
 				render(){
 					return render({
 						[s]: `<div class="meal-container" data-meal-name="{name}">
-							<h3 class="toggle-title meal inline" contenteditable="false">{name}</h3>
-							<span class="edit-meal-name inline">&#9998;</span>
+							<h3 class="meal inline">{name}</h3>
+							<span class="edit-meal-name inline" data-editing="false">✎</span>
 							<div class="ingredients">
 								{ingredients}
 							</div>
@@ -194,7 +196,7 @@
 			}
 			class List{
 				#ltype; constructor(...items){this.items = items.flat(); this.#ltype = this.constructor.name}
-				find(name){return new Proxy(this.items.find(i=>i.name.format() === (name ?? '').format()), {})}
+				find(name, _=0){return (_ = this.items.find(i=>i.name.format() === (name ?? '').format())) ? new Proxy(_, {}) : null}
 				remove(name, _=0){return ((_ = this.items.reduce((p,c,i)=>c.name.format() === name.format() ? i : p, null)) !== null ? this.items.splice(_, 1) : null, this.items)}
 				add(item, hrs, _=0){return (_ = this.items.reduce((p,c,i)=>c.name.format() === item.name.format() ? i : p, 0)) ? hrs[0](this, _, item) : hrs[1](this, item)}
 				serialize(){return this.items.map(i=>i.serialize())}
@@ -272,13 +274,34 @@
 						el.querySelector(".ingredient-delete").addEventListener("click", window.ingredientDelete);
 					}else{alert("Please change the name of 'Something' to add another ingredient!")}
 				}
+				window.changeMealName = async function(e){
+					const toggle = e.target.dataset.editing = !(e.target.dataset.editing == 'true');
+					e.target.innerHTML = toggle ? '💾' : '✎';
+					const name = e.target.previousElementSibling;
+					if (toggle){
+						const replacer = Object.assign(document.createElement("input"), {value: name.innerHTML, classList: "meal inline"});
+						name.p().replaceChild(replacer, name);
+						replacer.addEventListener('focus', e=>e.target.selectionStart = e.target.selectionEnd = e.target.value.length);
+						replacer.focus();
+					}else{
+						const replacer = Object.assign(document.createElement("h3"), {innerHTML: name.value, classList: "meal inline"});
+						name.p().replaceChild(replacer, name);
+						if (!data.meals.find(name.value) || name.value === replacer.p().dataset.mealName){
+							data.meals.find(replacer.p().dataset.mealName).name = replacer.p().dataset.mealName = name.value;
+						}else{
+							alert("You've already defined a meal with that name!");
+							replacer.innerHTML = replacer.p().dataset.mealName;
+						}
+					}
+				}
 			})
 			.then(_=>{
 				document.querySelectorAll(".ingredient>p[contenteditable]").addEventListener("input", window.ingredientName);
 				document.querySelectorAll(".ingredient-qty").addEventListener("input", window.ingredientQty);
 				document.querySelectorAll(".ingredient-categories").addEventListener("change", window.ingredientCategory);
 				document.querySelectorAll(".ingredient-delete").addEventListener("click", window.ingredientDelete);
-
+				document.querySelectorAll(".edit-meal-name").addEventListener("click", window.changeMealName);
+				
 				document.querySelectorAll(".add-ingredient").addEventListener("click", window.addIngredient);
 			})
 			.then(_=>{
@@ -292,6 +315,7 @@
 						el.querySelector(".ingredient-qty").addEventListener("input", window.ingredientQty);
 						el.querySelector(".ingredient-categories").addEventListener("change", window.ingredientCategory);
 						el.querySelector(".ingredient-delete").addEventListener("click", window.ingredientDelete);
+						el.querySelector(".edit-meal-name").addEventListener("click", widow.changeMealName);
 
 						el.querySelector(".add-ingredient").addEventListener("click", window.addIngredient);
 					}else{alert("Please change the name of 'Something' to add another meal!")}
