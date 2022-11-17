@@ -2,18 +2,29 @@
 <html lang="en-US">
     <body>
         <h1>Item 1</h1>
+        <div id="potato"></div>
+        <input type="text" name="text_value">
+
         <script type="module">
             import {source as s, render, template} from 'https://unpkg.com/@lcf.vs/dom-engine@5.5.4/lib/frontend.js';
             NodeList.prototype.addEventListener = function(event, func){return [...this].map(node=>node.addEventListener(event, func))};
 
-            function listen(){
-                document.querySelectorAll("h1").addEventListener("click", _=>console.log(`Clicked ${_.target.textContent}`))
+            document.querySelector("input[name='text_value']").addEventListener("input", _=>{
+                const evt = new Event("changed text_value");
+                [...document.querySelectorAll("*")].forEach(e=>e.dispatchEvent(evt))
+                console.log("Dispatched!")
+            })
+
+            function makeathing(text="blh"){
+                const rendered = render({
+                    [s]: `<h2>{some_text}</h2>`,
+                    some_text: text
+                })
+                rendered.querySelector("h2").addEventListener("changed text_value", _=>_.target.innerHTML = document.querySelector("input[name='text_value']").value)
+                return rendered;
             }
-            listen();
 
-            document.querySelector("body").append(render({[s]: "<h1>Item 2</h1>"}))
-
-            listen();
+            document.querySelector("#potato").append(makeathing())
         </script>
     </body>
 </html>
