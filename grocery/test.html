@@ -1,30 +1,38 @@
 <!DOCTYPE html>
 <html lang="en-US">
     <body>
-        <h1>Item 1</h1>
-        <div id="potato"></div>
-        <input type="text" name="text_value">
+        <div id="container"></div>
 
         <script type="module">
             import {source as s, render, template} from 'https://unpkg.com/@lcf.vs/dom-engine@5.5.4/lib/frontend.js';
             NodeList.prototype.addEventListener = function(event, func){return [...this].map(node=>node.addEventListener(event, func))};
 
-            document.querySelector("input[name='text_value']").addEventListener("input", _=>{
-                const evt = new Event("changed text_value");
-                [...document.querySelectorAll("*")].forEach(e=>e.dispatchEvent(evt))
-                console.log("Dispatched!")
-            })
+            document.addEventListener("rerender", e=>console.log("Detail from document:", e.detail))
 
-            function makeathing(text="blh"){
-                const rendered = render({
-                    [s]: `<h2>{some_text}</h2>`,
-                    some_text: text
-                })
-                rendered.querySelector("h2").addEventListener("changed text_value", _=>_.target.innerHTML = document.querySelector("input[name='text_value']").value)
-                return rendered;
+            class Day{
+                constructor(data){this.data = data}
+                render(_=0){
+                    return (_ = render({
+                        [s]: `<ul id="id-list">
+                            {ids}
+                        </ul>`,
+                        ids: Day.items(this.data)
+                    }),
+                    _.addEventListener("rerender", e=>(e.target.querySelector("ul").innerHTML = null, e.target.append(Day.items(e.detail)))), _)
+                }
+                static items(array){console.log(array); return array.map(i=>render({[s]: `<li>{id}</li>`, id: i}))}
             }
 
-            document.querySelector("#potato").append(makeathing())
+            let ids = Array.from(Array(5), _=>~~(Math.random() * 1e10));
+            let idref = new WeakRef(ids); 
+            
+            document.querySelector("#container").append(new Day(ids).render());
+            
+            await setTimeout(_=>{
+                ids = Array.from(Array(5), _=>~~(Math.random() * 1e3));
+                document.querySelector("#id-list").dispatchEvent(new CustomEvent("rerender", {detail: ids}));
+                console.log("Changed! New ids:", ids, "\n", "idref has stored:", idref.deref())
+            }, 3000)
         </script>
     </body>
 </html>
