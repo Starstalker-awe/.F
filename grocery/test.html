@@ -1,38 +1,42 @@
 <!DOCTYPE html>
 <html lang="en-US">
+    <head>
+        <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+        <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+		<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    </head>
     <body>
-        <div id="container"></div>
-
-        <script type="module">
-            import {source as s, render, template} from 'https://unpkg.com/@lcf.vs/dom-engine@5.5.4/lib/frontend.js';
-            NodeList.prototype.addEventListener = function(event, func){return [...this].map(node=>node.addEventListener(event, func))};
-
-            document.addEventListener("rerender", e=>console.log("Detail from document:", e.detail))
-
-            class Day{
-                constructor(data){this.data = data}
-                render(_=0){
-                    return (_ = render({
-                        [s]: `<ul id="id-list">
-                            {ids}
-                        </ul>`,
-                        ids: Day.items(this.data)
-                    }),
-                    _.addEventListener("rerender", e=>(e.target.querySelector("ul").innerHTML = null, e.target.append(Day.items(e.detail)))), _)
+        <div id="root"></div>
+        <script type="text/babel">
+            class Thing extends React.Component{
+                constructor(props){
+                    super(props);
+                    this.state = {
+                        content: props.content,
+                        current_val: null,
+                        editing: false
+                    }
                 }
-                static items(array){console.log(array); return array.map(i=>render({[s]: `<li>{id}</li>`, id: i}))}
+
+                changeName=e=>{this.setState({current_val: e.target.innerHTML})}
+                handleButton=e=>{
+                    this.setState({content: this.state[this.state.editing ? 'current_val' : 'content'], editing: !this.state.editing});
+                }
+
+                render=()=>{
+                    return (
+                        <div>
+                            <h3 contentEditable={this.state.editing} onInput={this.changeName}>{this.state.content}</h3>
+                            <button onClick={this.handleButton}>Toggle Edit</button>
+                        </div>
+                    )
+                }
             }
 
-            let ids = Array.from(Array(5), _=>~~(Math.random() * 1e10));
-            let idref = new WeakRef(ids); 
-            
-            document.querySelector("#container").append(new Day(ids).render());
-            
-            await setTimeout(_=>{
-                ids = Array.from(Array(5), _=>~~(Math.random() * 1e3));
-                document.querySelector("#id-list").dispatchEvent(new CustomEvent("rerender", {detail: ids}));
-                console.log("Changed! New ids:", ids, "\n", "idref has stored:", idref.deref())
-            }, 3000)
+            ReactDOM.render(
+                <Thing content="Hello, world" />, 
+                document.querySelector("#root")
+            )
         </script>
     </body>
 </html>
