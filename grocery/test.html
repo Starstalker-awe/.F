@@ -8,33 +8,21 @@
     <body>
         <div id="root"></div>
         <script type="text/babel">
-            class Thing extends React.Component{
+            class Thing extends React.Component {
                 constructor(props){
                     super(props);
-                    this.state = {
-                        content: props.content,
-                        current_val: null,
-                        editing: false
-                    }
+                    this.state = {text: props.start}
                 }
 
-                changeName=e=>{this.setState({current_val: e.target.innerHTML})}
-                handleButton=e=>{
-                    this.setState({content: this.state[this.state.editing ? 'current_val' : 'content'], editing: !this.state.editing});
-                }
+                func=e=>console.log("Lost focus!")
 
-                render=()=>{
-                    return (
-                        <div>
-                            <h3 contentEditable={this.state.editing} onInput={this.changeName}>{this.state.content}</h3>
-                            <button onClick={this.handleButton}>Toggle Edit</button>
-                        </div>
-                    )
-                }
+                render=()=>(
+                    <h3 contentEditable onLostFocus={this.func} onBlur={this.func}>{this.state.text}</h3>
+                )
             }
 
             ReactDOM.render(
-                <Thing content="Hello, world" />, 
+                <Thing start="potatoes are awesome" />, 
                 document.querySelector("#root")
             )
         </script>
