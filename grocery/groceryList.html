@@ -117,16 +117,16 @@
 					this.state = {items: props.children}
 				}
 
-				findIndex=n=>this.state.items.reduce((p,c,i)=>c.props.name.format() === n.format() ? i : p, null);
+				findIndex=n=>this.state.items.reduce((p,c,i)=>c.props.id === n ? i : p, null);
 
-				remove=e=>confirm(`Are you sure you want to remove ${e.target.dataset.name} from ${e.target.dataset.parent}?`) ? (this.state.items.splice(this.findIndex(e.target.dataset.name), 1), this.forceUpdate()) : false;
+				remove=e=>confirm(`Are you sure you want to remove ${e.target.dataset.name} from ${e.target.dataset.parent}?`) ? (this.state.items.splice(this.findIndex(e.target.dataset.key), 1), this.forceUpdate()) : false;
 				//add=(...is)=>(is.flat().map(i=>this.state.items.splice(this.state.items.length, 0, i)), this);
 				add=e=>{
 					const item = {...this.state.items[0], props: {name: "New ...", ingredients: [{name: "New ingredient", qty: 0, category: 0}]}, key: `${this.state.items[0].key.split("_")[0]}_${this.state.items.length}`}
 					this.state.items.push(item);
 					this.forceUpdate();
 				}
-				rename=(o,n)=>this.findIndex(n) === null ? (this.state.items[this.findIndex(o)].props.name = n, true) : false;
+				rename=(k,n)=>this.state.items[this.findIndex(k)].props.name = n;
 
 				render=()=>{
 					return (
@@ -159,19 +159,15 @@
 						<ListContext.Consumer>
 							{value=>(
 								<div className="ingredient">
-									<p contentEditable={this.state.editing} onInput={e=>this.setState({_name: e.target.innerHTML})}>{this.state.name.format()}</p>
+									{this.state.editing ? (
+										<input type="text" onInput={e=>this.setState({_name: e.target.innerHTML})} value={this.state._name} />
+									) : (
+										<p>{this.state.name.format()}</p>
+									)}
 									<span className="edit-ingredient-name inline" onClick={e=>{
 										this.setState({editing: !this.state.editing});
-										console.log(e.target.parentElement)
-										if(this.state.editing){
-											if(!value.rename(this.state.name, this.state._name)){
-												this.setState({_name: this.state.name})
-												alert(`You've already used the name "${this.state._name.format()}"!`);
-												console.log(this.state.name, this.state._name)
-												this.forceUpdate();
-											}else{this.setState({name: this.state._name})}
-										}
-									}}>✎</span>
+										if(this.state.editing){value.rename(this.props.id, this.state._name)}
+									}}>{this.state.editing ? '💾' : '✎'}</span>
 									<div className="ingredient-right">
 										<input type="number" value={this.state.qty} className="ingredient-qty" onInput={e=>this.setState({qty: e.target.value})}></input>
 										<select className="ingredient-categories" onChange={e=>this.setState({category: e.target.value})}>
@@ -180,13 +176,12 @@
 												<option key={`cat_${i+1}`} className="ingredient-category" value={c} selected={Ingredient.categories.indexOf(this.state.category) === i}>{c}</option>
 											))}
 										</select>
-										<button className="ingredient-delete" data-name={this.state.name} data-parent={this.props.meal} onClick={value.remove}>🗑</button>
+										<button className="ingredient-delete" data-key={this.props.id} data-name={this.state.name} data-parent={this.props.parent} onClick={value.remove}>🗑</button>
 									</div>
 								</div>)}
 						</ListContext.Consumer>
 					)
 				}
-
 				static categories = ["Dry", "Produce", "Deli", "Frozen", "Other"];
 			}
 
@@ -206,27 +201,25 @@
 				render=_=>{
 					return (
 						<div className="meal-container">
-							<h3 className="meal inline" contentEditable={this.state.editing} onInput={e=>this.setState({_name: e.target.innerHTML})}>{this.state.name}</h3>
+							{this.state.editing ? (
+								<input className="inline meal-name-input" type="text" onInput={e=>this.setState({_name: e.target.innerHTML})} value={this.state._name} />
+							) : (
+								<h3 className="meal inline">{this.state.name}</h3>
+							)}
 							<ListContext.Consumer>
 								{value=>(
 									<span className="meal-name-buttons">
 										<span className="edit-meal-name inline" onClick={e=>{
 											this.setState({editing: !this.state.editing});
-											if(this.state.editing){
-												if(!value.rename(this.state.name, this.state._name)){
-													this.setState({_name: this.state.name})
-													alert(`You've already used the name "${this.state._name.format()}"!`);
-													this.forceUpdate();
-												}else{this.setState({name: this.state._name})}
-											}
-										}}>✎</span>
-										<span className="meal-delete inline" data-name={this.state.name} data-parent="meals" onClick={value.remove}>🗑</span>
+											if(this.state.editing){value.rename(this.props.id, this.state._name)}
+										}}>{this.state.editing ? '💾' : '✎'}</span>
+										<span className="meal-delete inline" data-key={this.props.id} data-name={this.state.name} data-parent="meals" onClick={value.remove}>🗑</span>
 									</span>
 								)}
 							</ListContext.Consumer>
 							<List button="ingredient">
 								{this.state.ingredients.map((d,i)=>(
-									<Ingredient key={`ingredient_${i}`} name={d.name} qty={d.qty} category={d.category} parent={this.state.name} />
+									<Ingredient key={`ingredient_${i}`} id={`ingredient_${i}`} name={d.name} qty={d.qty} category={d.category} parent={this.state.name} />
 								))}
 							</List>
 						</div>
@@ -266,14 +259,14 @@
 							{name: "Olives", qty: 0.5, category: "Dry"}
 						]
 					},
-					/*{
+					{
 						name: 'Lentil Pasta',
 						ingredients: [
 							{name: "Pasta", qty: 1, category: "Dry"},
 							{name: "Carrot", qty: 1, category: "Produce"},
 							{name: "Lentil", qty: 1, category: "Dry"}
 						]
-					}*/
+					}
 				]
 			}))
 			// ====== TEST DATA ======
@@ -283,7 +276,7 @@
 				<section className="toggles">
 					<Dropdown title="Meals" open={true}>
 						<List id='meals' button='meal'>
-							{data.meals.map((m,i)=><Meal key={`meal_${i}`} name={m.name} ingredients={m.ingredients} />)}
+							{data.meals.map((m,i)=><Meal key={`meal_${i}`} id={`meal_${i}`} name={m.name} ingredients={m.ingredients} />)}
 						</List>
 					</Dropdown>
 					<div className="divider" />
