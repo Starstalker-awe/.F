@@ -11,14 +11,21 @@
             class Thing extends React.Component {
                 constructor(props){
                     super(props);
-                    this.state = {text: props.start}
+                    this.state = {
+                        name: props.name || "A thing",
+                        _name: props.name || "A thing",
+                        editing: props.editing || false,
+                    };
                 }
-
-                func=e=>console.log("Lost focus!")
-
-                render=()=>(
-                    <h3 contentEditable onLostFocus={this.func} onBlur={this.func}>{this.state.text}</h3>
-                )
+                render=()=>{
+                    return (
+                        <div>
+                            {this.state.editing ? (
+                                <input type="text" onChange={e=>this.setState({_name: e.target.value})} value={this.state._name} />
+                            ) : (<h3>{this.state.name}</h3>)}
+                        </div>
+                    )
+                }
             }
 
             ReactDOM.render(
