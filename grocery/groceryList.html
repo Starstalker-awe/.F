@@ -140,20 +140,20 @@
 				componentShouldUpdate=(np,ns)=>JSON.stringify(this.state.items) !== JSON.stringify(ns.items) || JSON.stringify(this.props) !== JSON.stringify(np);
 			}
 
-			class MealIngredient extends React.Component{
+			class Ingredient extends React.Component{
 				constructor(props){
 					super(props);
 					this.state = {
 						name: props.name,
 						_name: props.name,
 						qty: props.qty,
-						category: typeof props.category === 'string' ? props.category.format() : MealIngredient.categories[props.category],
+						category: typeof props.category === 'string' ? props.category.format() : Ingredient.categories[props.category],
 						editing: false
 					}
 					this.nameEdit = React.createRef();
 				}
 
-				serialize(){return {name: this.state.name, qty: this.state.qty, category: MealIngredient.categories.indexOf(this.state.category.format())}}
+				serialize(){return {name: this.state.name, qty: this.state.qty, category: Ingredient.categories.indexOf(this.state.category.format())}}
 
 				render=()=>{
 					return (
@@ -178,8 +178,8 @@
 										<input type="number" value={this.state.qty} className="ingredient-qty" onInput={e=>this.setState({qty: e.target.value})}></input>
 										<select className="ingredient-categories" onChange={e=>this.setState({category: e.target.value})}>
 											<option key="cat_0" className="ingredient-category" disabled selected={this.state.category !== null}>-- {this.state.name} --</option>
-											{MealIngredient.categories.map((c,i)=>(
-												<option key={`cat_${i+1}`} className="ingredient-category" value={c} selected={MealIngredient.categories.indexOf(this.state.category) === i}>{c}</option>
+											{Ingredient.categories.map((c,i)=>(
+												<option key={`cat_${i+1}`} className="ingredient-category" value={c} selected={Ingredient.categories.indexOf(this.state.category) === i}>{c}</option>
 											))}
 										</select>
 										<button className="ingredient-delete" data-key={this.props.id} data-name={this.state.name} data-parent={this.props.parent} onClick={value.remove}>🗑</button>
@@ -232,7 +232,7 @@
 							</ListContext.Consumer>
 							<List button="ingredient">
 								{this.state.ingredients.map((d,i)=>(
-									<MealIngredient key={`ingredient_${i}`} name={d.name} qty={d.qty} category={d.category} parent={this.state.name} parentId={this.props.id} />
+									<Ingredient key={`ingredient_${i}`} name={d.name} qty={d.qty} category={d.category} parent={this.state.name} parentId={this.props.id} />
 								))}
 							</List>
 						</div>
