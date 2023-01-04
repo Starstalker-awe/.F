@@ -124,7 +124,6 @@
 				add=e=>{
 					const item = {...this.state.items[0], props: {name: "New ...", ingredients: [{name: "New ingredient", qty: 0, category: 0}]}, key: `${this.state.items[0].key.split("_")[0]}_${this.state.items.length}`}
 					this.state.items.push(item);
-					this.forceUpdate();
 				}
 				rename=(k,n)=>this.state.items[this.findIndex(k)].props.name = n;
 
@@ -138,21 +137,23 @@
 						</div>
 					)
 				}
+				componentShouldUpdate=(np,ns)=>JSON.stringify(this.state.items) !== JSON.stringify(ns.items) || JSON.stringify(this.props) !== JSON.stringify(np);
 			}
 
-			class Ingredient extends React.Component{
+			class MealIngredient extends React.Component{
 				constructor(props){
 					super(props);
 					this.state = {
 						name: props.name,
 						_name: props.name,
 						qty: props.qty,
-						category: typeof props.category === 'string' ? props.category.format() : Ingredient.categories[props.category],
+						category: typeof props.category === 'string' ? props.category.format() : MealIngredient.categories[props.category],
 						editing: false
 					}
+					this.nameEdit = React.createRef();
 				}
 
-				serialize(){return {name: this.state.name, qty: this.state.qty, category: Ingredient.categories.indexOf(this.state.category.format())}}
+				serialize(){return {name: this.state.name, qty: this.state.qty, category: MealIngredient.categories.indexOf(this.state.category.format())}}
 
 				render=()=>{
 					return (
@@ -160,17 +161,16 @@
 							{value=>(
 								<div className="ingredient">
 									{this.state.editing ? (
-										<input type="text" id={`${this.props.parentId}_${this.props.id}`} onInput={e=>this.setState({_name: e.target.innerHTML})} value={this.state._name} />
-									) : (<p id={`${this.props.parentId}_${this.props.id}`}>{this.state.name.format()}</p>)}
+										<input ref={this.nameEdit} type="text" onInput={e=>this.setState({_name: e.target.innerHTML})} value={this.state._name} />
+									) : (<p>{this.state.name.format()}</p>)}
 									<span className="edit-ingredient-name inline" onClick={e=>{
-										this.setState(()=>({editing: !this.state.editing}), state=>{
+										this.setState(()=>({editing: !this.state.editing}), _=>{
 											if(!this.state.editing){
 												value.rename(this.props.id, this.state._name);
-												this.setState(()=>({name: this.state._name}))
+												this.setState(()=>({name: this.state._name}));
 											}else{
-												const input = document.querySelector(`#${this.props.parentId}_${this.props.id}`);
-												input.setSelectionRange(input.value.length, input.value.length);
-												input.focus();
+												this.nameEdit.current.setSelectionRange((_ = this.nameEdit.current.value.length), _);
+												this.nameEdit.current.focus();
 											}
 										});
 									}}>{this.state.editing ? '💾' : '✎'}</span>
@@ -178,8 +178,8 @@
 										<input type="number" value={this.state.qty} className="ingredient-qty" onInput={e=>this.setState({qty: e.target.value})}></input>
 										<select className="ingredient-categories" onChange={e=>this.setState({category: e.target.value})}>
 											<option key="cat_0" className="ingredient-category" disabled selected={this.state.category !== null}>-- {this.state.name} --</option>
-											{Ingredient.categories.map((c,i)=>(
-												<option key={`cat_${i+1}`} className="ingredient-category" value={c} selected={Ingredient.categories.indexOf(this.state.category) === i}>{c}</option>
+											{MealIngredient.categories.map((c,i)=>(
+												<option key={`cat_${i+1}`} className="ingredient-category" value={c} selected={MealIngredient.categories.indexOf(this.state.category) === i}>{c}</option>
 											))}
 										</select>
 										<button className="ingredient-delete" data-key={this.props.id} data-name={this.state.name} data-parent={this.props.parent} onClick={value.remove}>🗑</button>
@@ -188,12 +188,7 @@
 						</ListContext.Consumer>
 					)
 				}
-				componentShouldUpdate=(nps,ns)=>{
-					if(ns._name !== this.state.name){
-						return false
-					}
-					return true
-				}
+				componentShouldUpdate=(np,ns)=>ns._name === this.state.name;
 				static categories = ["Dry", "Produce", "Deli", "Frozen", "Other"];
 			}
 
@@ -206,6 +201,7 @@
 						ingredients: props.ingredients,
 						editing: false
 					}
+					this.nameEdit = React.createRef();
 				}
 
 				serialize(){return {name: this.state.name, ingredients: this.ingredients.map(i=>i.serialize())}}
@@ -214,20 +210,19 @@
 					return (
 						<div className="meal-container">
 							{this.state.editing ? (
-								<input className="inline meal-name-input" id={this.props.id} type="text" onChange={e=>this.setState({_name: e.target.value})} value={this.state._name} />
-							) : (<h3 className="meal inline" id={this.props.id}>{this.state.name}</h3>)}
+								<input className="inline meal-name-input" ref={this.nameEdit} type="text" onChange={e=>this.setState({_name: e.target.value})} value={this.state._name} />
+							) : (<h3 className="meal inline">{this.state.name}</h3>)}
 							<ListContext.Consumer>
 								{value=>(
 									<span className="meal-name-buttons">
 										<span className="edit-meal-name inline" onClick={e=>{
-											this.setState(()=>({editing: !this.state.editing}), state=>{
+											this.setState(()=>({editing: !this.state.editing}), _=>{
 												if(!this.state.editing){
-													value.rename(this.props.id, this.state._name)
-													this.setState(()=>({name: this.state._name}))
+													value.rename(this.props.id, this.state._name);
+													this.setState(()=>({name: this.state._name}));
 												}else{
-													const input = document.querySelector(`#${this.props.id}`);
-													input.setSelectionRange(input.value.length, input.value.length);
-													input.focus();
+													this.nameEdit.current.setSelectionRange((_ = this.nameEdit.current.value.length), _);
+													this.nameEdit.current.focus();
 												}
 											});
 										}}>{this.state.editing ? '💾' : '✎'}</span>
@@ -237,18 +232,24 @@
 							</ListContext.Consumer>
 							<List button="ingredient">
 								{this.state.ingredients.map((d,i)=>(
-									<Ingredient key={`ingredient_${i}`} id={`ingredient_${i}`} name={d.name} qty={d.qty} category={d.category} parent={this.state.name} parentId={this.props.id} />
+									<MealIngredient key={`ingredient_${i}`} name={d.name} qty={d.qty} category={d.category} parent={this.state.name} parentId={this.props.id} />
 								))}
 							</List>
 						</div>
 					)
 				}
-				componentShouldUpdate=(nps,ns)=>{
-					if(ns._name !== this.state.name){
-						return false
+				componentShouldUpdate=(np,ns)=>ns._name === this.state.name;
+			}
+
+			class Day extends React.Component{
+				constructor(props){
+					super(props);
+					this.state = {
+						day: typeof props.day === 'string' ? props.day.format() : Day.days[props.day],
+						
 					}
-					return true
 				}
+				static days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 			}
 
 			class Dropdown extends React.Component{
@@ -274,39 +275,46 @@
 			window.localStorage.setItem("data", JSON.stringify({
 				meals: [
 					{
-						name: 'Pesto Pasta',
+						name: "Pesto Pasta",
 						ingredients: [
-							{name: 'Pasta', qty: 1, category: "Dry"},
-							{name: 'Spinach', qty: 0.5, category: "Produce"},
-							{name: 'Pesto', qty: 0.5, category: "Dry"},
+							{name: "Pasta", qty: 1, category: "Dry"},
+							{name: "Spinach", qty: 0.5, category: "Produce"},
+							{name: "Pesto", qty: 0.5, category: "Dry"},
 							{name: "Pepper", qty: 1, category: "Produce"},
 							{name: "Olives", qty: 0.5, category: "Dry"}
 						]
 					},
 					{
-						name: 'Lentil Pasta',
+						name: "Lentil Pasta",
 						ingredients: [
 							{name: "Pasta", qty: 1, category: "Dry"},
 							{name: "Carrot", qty: 1, category: "Produce"},
 							{name: "Lentil", qty: 1, category: "Dry"}
 						]
 					}
+				],
+				plan: [
+					{day: "Monday", meal: "Lentil Pasta"}
+				],
+				list: [
+					{item: "Potato", qty: 5, category: "Produce"},
+					{item: "Carrot", qty: 7, category: "Produce"}
 				]
-			}))
+			}));
 			// ====== TEST DATA ======
 
-			const data = JSON.parse(window.localStorage.getItem("data"))
+			const data = JSON.parse(window.localStorage.getItem("data"));
 			ReactDOM.render(
 				<section className="toggles">
 					<Dropdown title="Meals" open={true}>
 						<List id='meals' button='meal'>
-							{data.meals.map((m,i)=><Meal key={`meal_${i}`} id={`meal_${i}`} name={m.name} ingredients={m.ingredients} />)}
+							{data.meals.map((m,i)=><Meal key={`meal_${i}`} {...m} />)}
 						</List>
 					</Dropdown>
 					<div className="divider" />
 					<Dropdown title="Menu Plan">
-						<List id='meals' button='meal'>
-							{}
+						<List id='meals' button='day'>
+							{/*data.plan.map((d,i)=><Day key={`day_${i}`} {...d} />)*/}
 						</List>
 					</Dropdown>
 					<div className="divider" />
