@@ -114,16 +114,33 @@
 			class List extends React.Component{
 				constructor(props){
 					super(props);
-					this.state = {items: props.children}
+					this.state = {items: props.children};
+					window.ReactData = {...window.ReactData, [props.children[0].type.name]: this.items};
+					if(props.contains.Schema.type === 'Meal'){
+						this.add(props.contains.Schema);}
 				}
+				get items(){return this.state.items}
 
 				findIndex=n=>this.state.items.reduce((p,c,i)=>c.props.id === n ? i : p, null);
 
 				remove=e=>confirm(`Are you sure you want to remove ${e.target.dataset.name} from ${e.target.dataset.parent}?`) ? (this.state.items.splice(this.findIndex(e.target.dataset.key), 1), this.forceUpdate()) : false;
-				//add=(...is)=>(is.flat().map(i=>this.state.items.splice(this.state.items.length, 0, i)), this);
 				add=e=>{
-					const item = {...this.state.items[0], props: {name: "New ...", ingredients: [{name: "New ingredient", qty: 0, category: 0}]}, key: `${this.state.items[0].key.split("_")[0]}_${this.state.items.length}`}
-					this.state.items.push(item);
+					const item = (function build(item, schema){
+						for (const [key, val] of Object.entries(schema)){
+							switch (val.toString().match(/ (\w+)/)[1]){
+								case 'String': item[key] = "Something"; break;
+								case 'Number': item[key] = 0; break;
+								case 'Set': item[key] = [...val][val.size-1]; break;
+								case 'Object': item[key] = (function buildObj(obj){
+									const _ = Array.from(Array(1), _=>build({}, obj.schema));
+									return ("type" in obj) ? _ : _[0];
+								})(val); break;
+							}
+						}
+						return item
+					})({}, this.props.contains.Schema.schema);
+					this.state.items.push(<this.props.contains {...item} />);
+					this.forceUpdate();
 				}
 				rename=(k,n)=>this.state.items[this.findIndex(k)].props.name = n;
 
@@ -138,6 +155,7 @@
 					)
 				}
 				componentShouldUpdate=(np,ns)=>JSON.stringify(this.state.items) !== JSON.stringify(ns.items) || JSON.stringify(this.props) !== JSON.stringify(np);
+				componentDidUpdate=(..._)=>null
 			}
 
 			class Ingredient extends React.Component{
@@ -190,6 +208,7 @@
 				}
 				componentShouldUpdate=(np,ns)=>ns._name === this.state.name;
 				static categories = ["Dry", "Produce", "Deli", "Frozen", "Other"];
+				static Schema = {type: "Ingredient", schema: {name: String, qty: Number, category: new Set(Ingredient.categories)}};
 			}
 
 			class Meal extends React.Component{
@@ -206,7 +225,7 @@
 
 				serialize(){return {name: this.state.name, ingredients: this.ingredients.map(i=>i.serialize())}}
 
-				render=_=>{
+				render=()=>{
 					return (
 						<div className="meal-container">
 							{this.state.editing ? (
@@ -230,7 +249,7 @@
 									</span>
 								)}
 							</ListContext.Consumer>
-							<List button="ingredient">
+							<List button="ingredient" contains={Ingredient}>
 								{this.state.ingredients.map((d,i)=>(
 									<Ingredient key={`ingredient_${i}`} name={d.name} qty={d.qty} category={d.category} parent={this.state.name} parentId={this.props.id} />
 								))}
@@ -239,6 +258,7 @@
 					)
 				}
 				componentShouldUpdate=(np,ns)=>ns._name === this.state.name;
+				static Schema = {type: "Meal", schema: {name: String, ingredients: {type: Array, schema: Ingredient.Schema.schema, ref: Ingredient}}};
 			}
 
 			class Day extends React.Component{
@@ -249,7 +269,28 @@
 						
 					}
 				}
+
+				render=()=>{
+					return (
+						<div>A day</div>
+					)
+				}
 				static days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+				static Schema = {type: "Day", schema: {day: new Set(Day.days), meal: String}};
+			}
+
+			class Item extends React.Component{
+				constructor(props){
+					super(props);
+					this.state = {};
+				}
+
+				render=()=>{
+					return (
+						<div>An item</div>
+					)
+				}
+				static Schema = {type: "Item", schema: {}};
 			}
 
 			class Dropdown extends React.Component{
@@ -307,20 +348,20 @@
 			ReactDOM.render(
 				<section className="toggles">
 					<Dropdown title="Meals" open={true}>
-						<List id='meals' button='meal'>
+						<List id='meals' button='meal' contains={Meal}>
 							{data.meals.map((m,i)=><Meal key={`meal_${i}`} {...m} />)}
 						</List>
 					</Dropdown>
 					<div className="divider" />
 					<Dropdown title="Menu Plan">
-						<List id='meals' button='day'>
-							{/*data.plan.map((d,i)=><Day key={`day_${i}`} {...d} />)*/}
+						<List id='meals' button='day' contains={Day}>
+							{data.plan.map((d,i)=><Day key={`day_${i}`} {...d} />)}
 						</List>
 					</Dropdown>
 					<div className="divider" />
 					<Dropdown title="Grocery List">
-						<List id="grocery-list" button="item">
-							{}
+						<List id="grocery-list" button="item" contains={Item}>
+							{data.list.map((l,i)=><Item key={`item_${i}`} {...l} />)}
 						</List>
 					</Dropdown>
 				</section>,
