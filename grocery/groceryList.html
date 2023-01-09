@@ -116,8 +116,6 @@
 					super(props);
 					this.state = {items: props.children};
 					window.ReactData = {...window.ReactData, [props.children[0].type.name]: this.items};
-					if(props.contains.Schema.type === 'Meal'){
-						this.add(props.contains.Schema);}
 				}
 				get items(){return this.state.items}
 
@@ -154,7 +152,6 @@
 						</div>
 					)
 				}
-				componentShouldUpdate=(np,ns)=>JSON.stringify(this.state.items) !== JSON.stringify(ns.items) || JSON.stringify(this.props) !== JSON.stringify(np);
 				componentDidUpdate=(..._)=>null
 			}
 
@@ -249,6 +246,7 @@
 									</span>
 								)}
 							</ListContext.Consumer>
+							{/* Convert to using tables */}
 							<List button="ingredient" contains={Ingredient}>
 								{this.state.ingredients.map((d,i)=>(
 									<Ingredient key={`ingredient_${i}`} name={d.name} qty={d.qty} category={d.category} parent={this.state.name} parentId={this.props.id} />
@@ -347,6 +345,7 @@
 			const data = JSON.parse(window.localStorage.getItem("data"));
 			ReactDOM.render(
 				<section className="toggles">
+					<div className="divider" />
 					<Dropdown title="Meals" open={true}>
 						<List id='meals' button='meal' contains={Meal}>
 							{data.meals.map((m,i)=><Meal key={`meal_${i}`} {...m} />)}
@@ -364,6 +363,7 @@
 							{data.list.map((l,i)=><Item key={`item_${i}`} {...l} />)}
 						</List>
 					</Dropdown>
+					<div className="divider" />
 				</section>,
 				document.querySelector("#root")
 			)
