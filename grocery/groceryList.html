@@ -36,12 +36,14 @@
 			}
 			input.meal{width: 60% !important;}
 			.toggle-title:after{
-				content: '\02795';
-				font-size: 13px;
+				content: '+';
+				font-size: 18px;
+				font-weight: 800;
 				color: #777;
 				float: right;
 				margin-left: 5px;
 			}
+			.toggle-title.open:after{content: 'x'}
 			.toggle-body{
 				margin: auto auto 10px auto;
 				width: var(--content-width);
@@ -51,7 +53,6 @@
 				overflow: hidden;
 				padding: 5px;
 			}
-			.active:after{content: "\2796";}
 
 			.banner-button{
 				width: 100%;
@@ -67,7 +68,7 @@
 			.ingredients{
 				margin: 20px 0;
 			}
-			.ingredient, .ingredient-right{
+			.ingredient, .right{
 				display: flex;
 				flex-wrap: nowrap;
 				justify-content: space-between;
@@ -75,7 +76,7 @@
 			.ingredient, .ingredient>p{
 				min-height: var(--ingredient-height);
 			}
-			.ingredient-right{
+			.right{
 				justify-content: flex-end;
 				width: 50%;
 			}
@@ -94,7 +95,7 @@
 				margin: calc(var(--ingredient-height) / 4) 10px;
 			}
 
-			.meal-container{
+			.container{
 				margin: 5px;
 				padding: 5px;
 				outline: 1px solid black;
@@ -112,10 +113,12 @@
 			const ListContext = React.createContext();
 
 			class List extends React.Component{
+				static defaultProps = {private: false};
+
 				constructor(props){
 					super(props);
 					this.state = {items: props.children};
-					window.ReactData = {...window.ReactData, [props.children[0].type.name]: this.items};
+					if(!props.private){window.ReactData = {...window.ReactData, [props.contains.Schema.type]: this.items}}
 				}
 				get items(){return this.state.items}
 
@@ -123,20 +126,20 @@
 
 				remove=e=>confirm(`Are you sure you want to remove ${e.target.dataset.name} from ${e.target.dataset.parent}?`) ? (this.state.items.splice(this.findIndex(e.target.dataset.key), 1), this.forceUpdate()) : false;
 				add=e=>{
-					const item = (function build(item, schema){
+					const item = (function build(schema, item = {}){
 						for (const [key, val] of Object.entries(schema)){
 							switch (val.toString().match(/ (\w+)/)[1]){
 								case 'String': item[key] = "Something"; break;
 								case 'Number': item[key] = 0; break;
 								case 'Set': item[key] = [...val][val.size-1]; break;
 								case 'Object': item[key] = (function buildObj(obj){
-									const _ = Array.from(Array(1), _=>build({}, obj.schema));
+									const _ = Array.from(Array(1), _=>build(obj.schema));
 									return ("type" in obj) ? _ : _[0];
 								})(val); break;
 							}
 						}
 						return item
-					})({}, this.props.contains.Schema.schema);
+					})(this.props.contains.Schema.schema);
 					this.state.items.push(<this.props.contains {...item} />);
 					this.forceUpdate();
 				}
@@ -152,7 +155,7 @@
 						</div>
 					)
 				}
-				componentDidUpdate=(..._)=>null
+				componentDidUpdate=(..._)=>{if(!this.props.private){window.ReactData = {...window.ReactData, [this.props.contains.Schema.type]: this.items}}};
 			}
 
 			class Ingredient extends React.Component{
@@ -189,7 +192,7 @@
 											}
 										});
 									}}>{this.state.editing ? '💾' : '✎'}</span>
-									<div className="ingredient-right">
+									<div className="right">
 										<input type="number" value={this.state.qty} className="ingredient-qty" onInput={e=>this.setState({qty: e.target.value})}></input>
 										<select className="ingredient-categories" onChange={e=>this.setState({category: e.target.value})}>
 											<option key="cat_0" className="ingredient-category" disabled selected={this.state.category !== null}>-- {this.state.name} --</option>
@@ -224,7 +227,7 @@
 
 				render=()=>{
 					return (
-						<div className="meal-container">
+						<div className="container">
 							{this.state.editing ? (
 								<input className="inline meal-name-input" ref={this.nameEdit} type="text" onChange={e=>this.setState({_name: e.target.value})} value={this.state._name} />
 							) : (<h3 className="meal inline">{this.state.name}</h3>)}
@@ -246,10 +249,9 @@
 									</span>
 								)}
 							</ListContext.Consumer>
-							{/* Convert to using tables */}
-							<List button="ingredient" contains={Ingredient}>
-								{this.state.ingredients.map((d,i)=>(
-									<Ingredient key={`ingredient_${i}`} name={d.name} qty={d.qty} category={d.category} parent={this.state.name} parentId={this.props.id} />
+							<List button="ingredient" contains={Ingredient} private={true}>
+								{this.state.ingredients.map((d,i,_)=>(
+									<Ingredient key={_ = `ingredient_${i}`} id={_} name={d.name} qty={d.qty} category={d.category} parent={this.state.name} parentId={this.props.id} />
 								))}
 							</List>
 						</div>
@@ -264,13 +266,16 @@
 					super(props);
 					this.state = {
 						day: typeof props.day === 'string' ? props.day.format() : Day.days[props.day],
-						
+						meal: props.meal
 					}
 				}
+				get meals(){return window.ReactData.Meal.map(e=>e.props.name)}
 
 				render=()=>{
 					return (
-						<div>A day</div>
+						<div className="container">
+							
+						</div>
 					)
 				}
 				static days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -346,21 +351,21 @@
 			ReactDOM.render(
 				<section className="toggles">
 					<div className="divider" />
-					<Dropdown title="Meals" open={true}>
+					<Dropdown title="Meals">
 						<List id='meals' button='meal' contains={Meal}>
-							{data.meals.map((m,i)=><Meal key={`meal_${i}`} {...m} />)}
+							{data.meals.map((m,i,_)=><Meal key={_ = `meal_${i}`} id={_} {...m} />)}
 						</List>
 					</Dropdown>
 					<div className="divider" />
-					<Dropdown title="Menu Plan">
+					<Dropdown title="Menu Plan" open={true}>
 						<List id='meals' button='day' contains={Day}>
-							{data.plan.map((d,i)=><Day key={`day_${i}`} {...d} />)}
+							{data.plan.map((d,i,_)=><Day key={_ = `day_${i}`} id={_} {...d} />)}
 						</List>
 					</Dropdown>
 					<div className="divider" />
 					<Dropdown title="Grocery List">
 						<List id="grocery-list" button="item" contains={Item}>
-							{data.list.map((l,i)=><Item key={`item_${i}`} {...l} />)}
+							{data.list.map((l,i,_)=><Item key={_ = `item_${i}`} id={_} {...l} />)}
 						</List>
 					</Dropdown>
 					<div className="divider" />
