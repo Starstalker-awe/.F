@@ -1,9 +1,12 @@
 <!DOCTYPE html>
 <html lang="en-US">
 	<head>
-		<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+		<!--<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
         <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-		<script src="https://unpkg.com/babel-standalone@6/babel.js"></script>
+		<script src="https://unpkg.com/babel-standalone@6/babel.js"></script>-->
+		<script src="../sources/react.production.min.js"></script>
+		<script src="../sources/react-dom.production.min.js"></script>
+		<script src="../sources/babel.min.js"></script>
 		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 		<meta charset="UTF-8">
 		<title>Grocery List</title>
@@ -103,14 +106,19 @@
 
 
 			.inline{display: inline;}
+			.inline-block{display: inline-block;}
 			.flex{display: flex;}
+			.nowrap{flex-wrap: nowrap;}
+			.space-between{justify-content: space-between;}
+			.flex-end{justify-content: flex-end;}
+			.width-50{width: 50%;}
+			.vertical-center{vertical-align: middle;}
 		</style>
 	</head>
 	<body>
 		<main id="root"></main>
 		<script type="text/babel">
 			String.prototype.format = function(_=0){return (_ = this.trim()).length > 1 ? _.split(" ").map(w=>(w = w.trim(), `${w[0].toUpperCase()}${w.substring(1).toLowerCase()}`)).join(" ") : _.length == 1 ? _.toUpperCase() : _};
-			const ListContext = React.createContext();
 
 			class List extends React.Component{
 				static defaultProps = {private: false};
@@ -125,7 +133,7 @@
 				findIndex=n=>this.state.items.reduce((p,c,i)=>c.props.id === n ? i : p, null);
 
 				remove=e=>confirm(`Are you sure you want to remove ${e.target.dataset.name} from ${e.target.dataset.parent}?`) ? (this.state.items.splice(this.findIndex(e.target.dataset.key), 1), this.forceUpdate()) : false;
-				add=e=>{
+				add=(e,mod)=>{
 					const item = (function build(schema, item = {}){
 						for (const [key, val] of Object.entries(schema)){
 							switch (val.toString().match(/ (\w+)/)[1]){
@@ -140,7 +148,8 @@
 						}
 						return item
 					})(this.props.contains.Schema.schema);
-					this.state.items.push(<this.props.contains {...item} />);
+					const i2 = mod ? mod(item, this.state.items) : item;
+					this.state.items.push(<this.props.contains {...i2} />);
 					this.forceUpdate();
 				}
 				rename=(k,n)=>this.state.items[this.findIndex(k)].props.name = n;
@@ -148,14 +157,15 @@
 				render=()=>{
 					return (
 						<div className="list-content" id={this.props.id}>
-							<ListContext.Provider value={{remove: this.remove, add: this.add, rename: this.rename}}>
+							<List.Context.Provider value={{remove: this.remove, add: this.add, rename: this.rename}}>
 								{this.props.children}
-							</ListContext.Provider>
-							<button className="banner-button" id={`new-${this.props.button}`} onClick={this.add}>New {this.props.button.format()}</button>
+							</List.Context.Provider>
+							<button className="banner-button" id={`new-${this.props.button}`} onClick={e=>this.add(e, this.props.add_mod)}>New {this.props.button.format()}</button>
 						</div>
 					)
 				}
 				componentDidUpdate=(..._)=>{if(!this.props.private){window.ReactData = {...window.ReactData, [this.props.contains.Schema.type]: this.items}}};
+				static Context = React.createContext();
 			}
 
 			class Ingredient extends React.Component{
@@ -175,7 +185,7 @@
 
 				render=()=>{
 					return (
-						<ListContext.Consumer>
+						<List.Context.Consumer>
 							{value=>(
 								<div className="ingredient">
 									{this.state.editing ? (
@@ -203,7 +213,7 @@
 										<button className="ingredient-delete" data-key={this.props.id} data-name={this.state.name} data-parent={this.props.parent} onClick={value.remove}>🗑</button>
 									</div>
 								</div>)}
-						</ListContext.Consumer>
+						</List.Context.Consumer>
 					)
 				}
 				componentShouldUpdate=(np,ns)=>ns._name === this.state.name;
@@ -231,7 +241,7 @@
 							{this.state.editing ? (
 								<input className="inline meal-name-input" ref={this.nameEdit} type="text" onChange={e=>this.setState({_name: e.target.value})} value={this.state._name} />
 							) : (<h3 className="meal inline">{this.state.name}</h3>)}
-							<ListContext.Consumer>
+							<List.Context.Consumer>
 								{value=>(
 									<span className="meal-name-buttons">
 										<span className="edit-meal-name inline" onClick={e=>{
@@ -248,7 +258,7 @@
 										<span className="meal-delete inline" data-key={this.props.id} data-name={this.state.name} data-parent="meals" onClick={value.remove}>🗑</span>
 									</span>
 								)}
-							</ListContext.Consumer>
+							</List.Context.Consumer>
 							<List button="ingredient" contains={Ingredient} private={true}>
 								{this.state.ingredients.map((d,i,_)=>(
 									<Ingredient key={_ = `ingredient_${i}`} id={_} name={d.name} qty={d.qty} category={d.category} parent={this.state.name} parentId={this.props.id} />
@@ -273,9 +283,24 @@
 
 				render=()=>{
 					return (
-						<div className="container">
-							
-						</div>
+						<List.Context.Consumer>
+							{value=>(
+								<div className="container">
+									<div className="flex nowrap space-between">
+										<h4>{this.state.day}</h4>
+										<span className="inline-block vertical-center" onClick={value.remove} data-name={this.state.day} data-parent="the meal plan">🗑</span>
+										<div className="flex nowrap flex-end width-50">
+											<select onChange={e=>this.setState({meal: e.target.value})}>
+												{window.ReactData.Meal.map(m=>m.props.name).map((m,i)=>(
+													<option key={i} value={m} selected={m.format() === this.state.meal.format()}>{m}</option>
+												))}
+												<option key={window.ReactData.Meal.length} value='Other'>Other</option>
+											</select>
+										</div>
+									</div>
+								</div>
+							)}
+						</List.Context.Consumer>
 					)
 				}
 				static days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -358,7 +383,7 @@
 					</Dropdown>
 					<div className="divider" />
 					<Dropdown title="Menu Plan" open={true}>
-						<List id='meals' button='day' contains={Day}>
+						<List id='meals' button='day' contains={Day} add_mod={(i,s)=>Object.assign(i,{day:Day.days[(Day.days.indexOf(s.length>0?s[s.length-1].props.day:i.day)+1)%Day.days.length]})}>
 							{data.plan.map((d,i,_)=><Day key={_ = `day_${i}`} id={_} {...d} />)}
 						</List>
 					</Dropdown>
