@@ -191,7 +191,7 @@
 									{this.state.editing ? (
 										<input ref={this.nameEdit} type="text" onInput={e=>this.setState({_name: e.target.innerHTML})} value={this.state._name} />
 									) : (<p>{this.state.name.format()}</p>)}
-									<span className="edit-ingredient-name inline" onClick={e=>{
+									<span className="inline" onClick={e=>{
 										this.setState(()=>({editing: !this.state.editing}), _=>{
 											if(!this.state.editing){
 												value.rename(this.props.id, this.state._name);
@@ -203,7 +203,7 @@
 										});
 									}}>{this.state.editing ? '💾' : '✎'}</span>
 									<div className="right">
-										<input type="number" value={this.state.qty} className="ingredient-qty" onInput={e=>this.setState({qty: e.target.value})}></input>
+										<input type="number" value={this.state.qty} className="ingredient-qty" onInput={e=>this.setState({qty: e.target.value})} min={0}></input>
 										<select className="ingredient-categories" onChange={e=>this.setState({category: e.target.value})}>
 											<option key="cat_0" className="ingredient-category" disabled selected={this.state.category !== null}>-- {this.state.name} --</option>
 											{Ingredient.categories.map((c,i)=>(
@@ -310,15 +310,54 @@
 			class Item extends React.Component{
 				constructor(props){
 					super(props);
-					this.state = {};
+					this.state = {
+						name: props.name,
+						_name: props.name,
+						qty: props.qty,
+						category: typeof props.category === 'string' ? props.category.format() : Item.categories[props.category],
+						editing: false
+					};
+					this.nameEdit = React.createRef();
 				}
 
 				render=()=>{
 					return (
-						<div>An item</div>
+						<List.Context.Consumer>
+							{value=>(
+								<div className="container">
+									<div className="flex nowrap space-between">
+										{this.state.editing ? (
+											<input ref={this.nameEdit} type="text" onChange={e=>this.setState({_name: e.target.value})} value={this.state._name} />
+										) : (<h5>{this.state.name.format()}</h5>)}
+										<span className="inline" onClick={e=>{
+											this.setState(()=>({editing: !this.state.editing}), _=>{
+												if(!this.state.editing){
+													value.rename(this.props.id, this.state._name);
+													this.setState(()=>({name: this.state._name}));
+												}else{
+													this.nameEdit.current.setSelectionRange((_ = this.nameEdit.current.value.length), _);
+													this.nameEdit.current.focus();
+												}
+											});
+										}}>{this.state.editing ? '💾' : '✎'}</span>
+										<div className="right">
+											<input type="number" value={this.state.qty} className="ingredient-qty" onInput={e=>this.setState({qty: e.target.value})} min={0}></input>
+											<select onChange={e=>this.setState({category: e.target.value})}>
+												<option key="cat_0" disabled selected={this.state.category !== null}>-- {this.state.name} --</option>
+												{Item.categories.map((c,i)=>(
+													<option key={`cat_${i+1}`} value={c} selected={Item.categories.indexOf(this.state.category) === i}>{c}</option>
+												))}
+											</select>
+											<button data-key={this.props.id} data-name={this.state.name} data-parent="the item list" onClick={value.remove}>🗑</button>
+										</div>
+									</div>
+								</div>
+							)}
+						</List.Context.Consumer>
 					)
 				}
-				static Schema = {type: "Item", schema: {}};
+				static categories = ["Dry", "Produce", "Deli", "Frozen", "Other"];
+				static Schema = {type: "Item", schema: {name: String, qty: Number}};
 			}
 
 			class Dropdown extends React.Component{
@@ -366,8 +405,8 @@
 					{day: "Monday", meal: "Lentil Pasta"}
 				],
 				list: [
-					{item: "Potato", qty: 5, category: "Produce"},
-					{item: "Carrot", qty: 7, category: "Produce"}
+					{name: "Potato", qty: 5, category: "Produce"},
+					{name: "Carrot", qty: 7, category: "Produce"}
 				]
 			}));
 			// ====== TEST DATA ======
@@ -382,13 +421,13 @@
 						</List>
 					</Dropdown>
 					<div className="divider" />
-					<Dropdown title="Menu Plan" open={true}>
+					<Dropdown title="Menu Plan">
 						<List id='meals' button='day' contains={Day} add_mod={(i,s)=>Object.assign(i,{day:Day.days[(Day.days.indexOf(s.length>0?s[s.length-1].props.day:i.day)+1)%Day.days.length]})}>
 							{data.plan.map((d,i,_)=><Day key={_ = `day_${i}`} id={_} {...d} />)}
 						</List>
 					</Dropdown>
 					<div className="divider" />
-					<Dropdown title="Grocery List">
+					<Dropdown title="Grocery List" open={true}>
 						<List id="grocery-list" button="item" contains={Item}>
 							{data.list.map((l,i,_)=><Item key={_ = `item_${i}`} id={_} {...l} />)}
 						</List>

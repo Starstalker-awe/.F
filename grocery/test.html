@@ -16,13 +16,24 @@
                         _name: props.name || "A thing",
                         editing: props.editing || false,
                     };
+                    this.nameEdit = React.createRef();
                 }
                 render=()=>{
                     return (
                         <div>
                             {this.state.editing ? (
-                                <input type="text" onChange={e=>this.setState({_name: e.target.value})} value={this.state._name} />
+                                <input ref={this.nameEdit} type="text" onChange={e=>this.setState({_name: e.target.value})} value={this.state._name} />
                             ) : (<h3>{this.state.name}</h3>)}
+                            <button onClick={e=>{
+                                this.setState(()=>({editing: !this.state.editing}), _=>{
+                                    if(!this.state.editing){
+                                        this.setState(()=>({name: this.state._name}));
+                                    }else{
+                                        this.nameEdit.current.setSelectionRange((_ = this.nameEdit.current.value.length), _);
+                                        this.nameEdit.current.focus();
+                                    }
+                                });
+                            }}>Change Editing State</button>
                         </div>
                     )
                 }
